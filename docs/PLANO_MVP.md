@@ -27,7 +27,7 @@ Investigação antes de escrever código de produção. **Pode invalidar premiss
 
 ### Escopo
 
-1. **Termos de Uso do Portal Contexto** — localizar e ler. Verificar se há política de uso automatizado ou canal oficial de dados abertos. Se restringirem, formalizar pedido junto ao TCE.
+1. ✅ ~~**Termos de Uso do Portal Contexto**~~ — pesquisado em 17/09/2026: nenhum termo dedicado publicado, nenhuma restrição a uso automatizado. Ver [CONFORMIDADE.md § Pesquisa de termos de uso](CONFORMIDADE.md). Resta formalizar contato institucional com o TCE-CE antes do lançamento (não bloqueia o desenvolvimento).
 2. **Mapear as 11 tabelas auxiliares restantes** — descobrir o método correto (GET retornou 404; provavelmente POST). Ver [API_TCE.md](API_TCE.md).
 3. **Medir o custo real de um sync de Horizonte** — 2.431 processos, `porLista` + `porNumero` por processo. Cronometrar e estimar quantas invocações da Vercel serão necessárias.
 4. **Validar a deduplicação** — coletar o mesmo processo duas vezes e confirmar que `tramites[].id` é estável.
@@ -416,7 +416,7 @@ Ancorado abaixo do Astrea por ser vertical mais estreito, com margem de upsell. 
 
 | # | Decisão | Quando |
 | :--- | :--- | :--- |
-| 1 | Termos de Uso do TCE — **bloqueante** | Fase 0 |
+| 1 | Formalizar contato institucional com o TCE-CE (pesquisa de termos concluída, sem bloqueio) | Antes do lançamento |
 | 2 | Provedor de WhatsApp: Cloud API oficial vs. BSP | Fase 3 |
 | 3 | Pricing final | Reunião comercial |
 | 4 | Nome do produto — `ControleProcessoTCE` é repositório, não marca | Antes do lançamento |

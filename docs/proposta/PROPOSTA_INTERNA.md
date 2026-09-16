@@ -96,9 +96,16 @@ O Código de Ética veda captação de clientela. Escritório abordando gestor c
 
 ### 4.3 Termos de uso do TCE
 
-**Pendência bloqueante.** Localizar os Termos de Uso do Portal Contexto na Fase 0. Se restringirem uso automatizado, formalizar pedido de acesso a dados abertos junto ao TCE antes de prosseguir.
+**Pesquisado em 17/09/2026 — resolvido, sem bloqueio.** Não existe termo de uso dedicado ao Portal Contexto ou à sua API, publicado ou vinculado (verificado no site, rodapé, central de ajuda e busca externa).
 
-Análise completa em [CONFORMIDADE.md](../CONFORMIDADE.md).
+Dois achados favoráveis durante a pesquisa:
+
+- O TCE-CE mantém e **divulga publicamente** uma API de dados abertos institucional (o **SIM**, para dados de licitação/orçamento/folha — sistema distinto do Contexto), com política de uso que **incentiva explicitamente** automação de consulta a dados públicos. Não autoriza a API do Contexto por si só, mas evidencia postura institucional favorável.
+- A norma de sigilo aplicável — **Resolução Administrativa nº 05/2024/TCE-CE** — já está refletida tecnicamente nas flags que a própria API retorna (`sigiloso`, `exibirDocumento`), que o `TceClient` respeita.
+
+**Não bloqueia mais o desenvolvimento.** Resta, como item de governança antes do lançamento comercial (não antes de codar): formalizar contato institucional com o TCE-CE (Ouvidoria ou TI) para comunicar o uso e obter posicionamento oficial.
+
+Análise completa em [CONFORMIDADE.md § Pesquisa de termos de uso](../CONFORMIDADE.md#pesquisa-de-termos-de-uso-17092026).
 
 ---
 
@@ -176,7 +183,7 @@ Ancoragem: "Escritório" abaixo do Smart (R$ 379) por ser vertical mais estreito
 
 | Risco | Impacto | Mitigação |
 | :--- | :--- | :--- |
-| **Termos de uso do TCE restringem automação** | 🔴 Bloqueante | Verificar na Fase 0; formalizar acesso a dados abertos |
+| Termos de uso do TCE restringem automação | 🟢 Baixo (pesquisado) | Nenhum termo dedicado encontrado (17/09); formalizar contato institucional antes do lançamento |
 | **API muda sem aviso** | 🟠 Alto | `TceClient` valida shape e falha alto; alerta no console |
 | **Questionamento ético (OAB)** | 🟠 Alto | Alerta institucional, sem oferta de serviço; parecer antes do lançamento |
 | **Classificação ruim de trâmites** | 🟠 Alto | Sem ela o cliente desliga o alerta. Regras editáveis + curadoria ativa no piloto |
@@ -211,7 +218,7 @@ Tratamento: regras determinísticas editáveis sem deploy + curadoria ativa dura
 
 | # | Pendência | Prazo |
 | :--- | :--- | :--- |
-| 1 | **Termos de Uso do TCE** — bloqueante | Fase 0 |
+| 1 | Formalizar contato institucional com o TCE-CE (pesquisa concluída, sem bloqueio) | Antes do lançamento |
 | 2 | Mapear 11 tabelas auxiliares restantes | Fase 0 |
 | 3 | Parecer jurídico LGPD (teste de balanceamento) | Antes do lançamento |
 | 4 | Parecer sobre posicionamento OAB | Antes do lançamento |
@@ -226,13 +233,13 @@ Tratamento: regras determinísticas editáveis sem deploy + curadoria ativa dura
 
 ## 10. Recomendação
 
-**Prosseguir**, com a Fase 0 como condição.
+**Prosseguir.** A pesquisa de termos de uso (17/09/2026) não encontrou restrição publicada — deixa de ser condição bloqueante da Fase 0.
 
 A descoberta da API pública elimina o maior risco técnico e reduz prazo e custo de forma significativa. O nicho está comprovadamente aberto — o líder de mercado, com 120 mil usuários, não atende Tribunais de Contas.
 
 O risco remanescente é **jurídico, não técnico**, e está concentrado na estratégia de prospecção. O reposicionamento do alerta como serviço informativo institucional endereça a parte principal, mas exige validação profissional antes do lançamento comercial.
 
-**A Fase 0 deve confirmar os Termos de Uso do TCE antes de qualquer investimento em desenvolvimento.**
+**A formalização de contato institucional com o TCE-CE segue recomendada antes do lançamento comercial**, como boa prática de relacionamento — não mais como bloqueio ao desenvolvimento.
 
 ---
 

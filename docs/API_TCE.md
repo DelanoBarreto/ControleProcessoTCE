@@ -19,6 +19,8 @@ O TCE-CE expõe uma **API REST pública, sem autenticação**, retornando JSON e
 **Header obrigatório:** `Origin: https://www.tce.ce.gov.br`
 **Content-Type:** `application/json` nas chamadas POST
 
+> **Não confundir com a API de Dados Abertos do SIM** (`api-dados-abertos.tce.ce.gov.br/sim/`), oficial, documentada via Swagger e **separada** desta. O SIM cobre licitações, orçamento, folha e patrimônio municipal — não trâmites processuais. Não serve como fonte de dados deste projeto, mas sua política de uso pública (throttle declarado, incentivo a automação, sem exigência de credencial para leitura) é referência do padrão que o TCE-CE considera aceitável. Ver [CONFORMIDADE.md](CONFORMIDADE.md#3-política-de-coleta).
+
 ---
 
 ## ⚠️ Armadilha crítica: `numero` vs `numeros`
@@ -228,13 +230,15 @@ Aplicado no `TceClient`, **antes de qualquer persistência** — o dado proibido
 
 Vale inclusive no inspetor do console interno: processo sigiloso não é renderizado nem em diagnóstico.
 
+**Base normativa confirmada:** o próprio bundle do Contexto cita, no aviso exibido ao tentar abrir um documento sigiloso, a **Resolução Administrativa nº 05/2024/TCE-CE** — junto com LGPD, Lei Orgânica do TCE e Lei de Acesso à Informação — como fundamento de sigilo. As flags `sigiloso`/`exibirDocumento` são o reflexo técnico dessa resolução; o `TceClient` apenas respeita o que a própria API já sinaliza. Texto integral da 05/2024 não localizado publicado — requerer via LAI/Ouvidoria se necessário para o parecer jurídico.
+
 Justificativa e base legal em [CONFORMIDADE.md](CONFORMIDADE.md).
 
 ---
 
 ## Pendências
 
-1. **Termos de Uso do Portal Contexto** — localizar e verificar se há política de uso automatizado ou canal oficial de dados abertos. Se existir, formalizar o acesso por lá. *(Fase 0)*
+1. ✅ **Termos de Uso do Portal Contexto** — pesquisado em 17/09/2026: nenhum termo dedicado publicado. Achados e análise completa em [CONFORMIDADE.md § Pesquisa de termos de uso](CONFORMIDADE.md#pesquisa-de-termos-de-uso-17092026). Resta formalizar contato institucional antes do lançamento.
 2. **Tabelas auxiliares restantes** — descobrir o método correto das 11 rotas declaradas no bundle. *(Fase 0)*
 3. **Endpoint de download de documento** — `/arquivos/documento` aparece no bundle sob `url_private`; verificar se exige autenticação.
 4. **Estabilidade do contrato** — a API não é versionada e não tem documentação oficial publicada. O `TceClient` deve validar o shape da resposta e falhar alto se o contrato mudar, em vez de gravar dado corrompido.

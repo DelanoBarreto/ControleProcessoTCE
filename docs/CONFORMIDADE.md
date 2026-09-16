@@ -136,6 +136,35 @@ Verificado em 16/09/2026:
 - `robots.txt` de `www.tce.ce.gov.br` bloqueia apenas pastas internas do Joomla — **não** bloqueia `/contexto` nem a API
 - `api-processos.tce.ce.gov.br` não publica `robots.txt`
 - Nenhum rate limit detectado
+- **Não existe página de "Termos de Uso" publicada e vinculada especificamente à API do Contexto** — buscado exaustivamente (site, rodapé, `#/ajuda`, busca externa) sem resultado. Ver "Pesquisa de termos de uso" abaixo.
+
+### Pesquisa de termos de uso (17/09/2026)
+
+Investigação dedicada para fechar a pendência #1. Três achados relevantes:
+
+**a) O TCE-CE publica e incentiva ativamente uma API de dados abertos institucional — mas é outro sistema.**
+
+`https://api-dados-abertos.tce.ce.gov.br/sim/` é uma API REST documentada via Swagger/OpenAPI, oficial, do **SIM** (Sistema Integrado Municipal — licitações, orçamento, folha, patrimônio). Não cobre o acompanhamento processual do Contexto (trâmites, relator, julgamentos), que é o dado que a plataforma precisa. Mas a política de uso publicada nela é a declaração institucional mais próxima de um "termo de uso de API" que o TCE-CE assume publicamente, e serve de indício forte de que consumo automatizado é bem-vindo pela instituição:
+
+> *"Acesse e utilize os dados públicos do Tribunal de Contas do Estado do Ceará de forma simples e automatizada (...) Use para: criar aplicações, fazer análises, automatizar consultas de dados públicos."*
+>
+> Limites declarados: até 1.000 requisições/segundo · até 1.000 registros/requisição (paginação via `$start_index`) · acesso restrito a IPs do Brasil.
+
+Esse texto **não se aplica juridicamente** à API do Contexto (`api-processos.tce.ce.gov.br`), que é um sistema separado. Mas é evidência de postura institucional favorável a automação de consulta a dados públicos, útil como elemento de contexto no teste de boa-fé — não como autorização.
+
+**b) A norma que rege sigilo é a Resolução Administrativa nº 05/2024/TCE-CE — e ela já está refletida no comportamento da própria API.**
+
+Encontrada no bundle JavaScript do app do Contexto, no texto exibido ao usuário quando tenta abrir um documento sigiloso:
+
+> *"Este documento contém dados pessoais ou informações sigilosas protegidos por lei, tais como Lei Geral de Proteção de Dados Pessoais (LGPD), Lei Orgânica do TCE, Lei de Acesso à Informação e Resolução Administrativa nº 05/2024 do TCE-CE."*
+
+Isso **confirma que o filtro de privacidade já adotado é o correto**: as flags `sigiloso: true` e `exibirDocumento: false` retornadas pela própria API são o reflexo técnico dessa resolução — o TCE já marca o que não deve circular, e o `TceClient` respeita essa marcação. O texto integral da Resolução 05/2024 não foi localizado publicado (não indexado por busca; pode estar em repositório interno de normativos). Se necessário para o parecer jurídico, requerer via LAI ou Ouvidoria (`ouvidoria@tce.ce.gov.br`).
+
+**c) Não há documento de "termos de uso" dedicado ao Portal Contexto ou à sua API.**
+
+Páginas verificadas sem resultado: `tce.ce.gov.br` (rodapé/menu), `contexto/#/ajuda`, `contexto/#/pagina-inicial`, `cidadao/consulta-de-processos`, `lgpd`, busca externa (Google) por `site:tce.ce.gov.br "termos de uso"`. Nenhuma restringe ou proíbe uso automatizado; também nenhuma autoriza explicitamente.
+
+**Conclusão da pesquisa:** a ausência de termo publicado não é sinal de proibição — é ausência de regulamentação específica. Combinada com (a) a política pública de incentivo a automação no SIM e (b) a ausência de `robots.txt` restritivo ou autenticação na API do Contexto, o quadro sustenta a leitura de que o consumo é tolerado, desde que conduzido com as salvaguardas já adotadas (throttle, identificação, filtro de privacidade). **Não substitui formalização institucional** — ver pendência atualizada abaixo.
 
 ### Regras de conduta
 
@@ -217,14 +246,14 @@ Nunca contém: oferta de serviço jurídico, assinatura de escritório ou advoga
 
 | # | Pendência | Quando |
 | :--- | :--- | :--- |
-| 1 | Localizar Termos de Uso do Portal Contexto; se restringirem uso automatizado, formalizar pedido de acesso a dados abertos | **Fase 0** |
+| 1 | ✅ Pesquisado (17/09/2026) — nenhum termo de uso dedicado ao Contexto encontrado; ver "Pesquisa de termos de uso". **Formalizar contato institucional com o TCE-CE** (Ouvidoria ou área de TI) para comunicar o uso e obter posicionamento oficial, antes do lançamento comercial | **Fase 0** — pesquisa concluída; formalização antes do lançamento |
 | 2 | Validação do teste de balanceamento por advogado de proteção de dados | Antes do lançamento |
 | 3 | Parecer sobre o posicionamento perante o Código de Ética da OAB | Antes do lançamento |
 | 4 | Redigir Política de Privacidade e Termos de Uso da plataforma | Antes do lançamento |
 | 5 | Definir encarregado (DPO) e publicar canal de contato | Antes do lançamento |
 | 6 | Contrato de tratamento com os escritórios (controlador × operador) | Antes do lançamento |
 
-> **Pendência 1 é bloqueante para o projeto.** As demais são bloqueantes para o lançamento comercial, não para o desenvolvimento.
+> **Pendência 1 foi pesquisada em 17/09/2026 e não bloqueia mais o desenvolvimento** — ver "Pesquisa de termos de uso" acima. Ficou apenas a formalização de contato institucional, exigível antes do lançamento comercial. As demais pendências (2–6) continuam bloqueantes só para o lançamento comercial, não para o desenvolvimento.
 
 ---
 

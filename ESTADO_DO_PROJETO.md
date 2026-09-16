@@ -3,7 +3,7 @@
 > **Leia este arquivo primeiro** ao abrir o projeto em outra máquina ou iniciar um chat novo com IA.
 > Ele responde: onde o projeto parou, o que já foi decidido e qual é o próximo passo.
 
-**Última atualização:** 16/09/2026
+**Última atualização:** 17/09/2026
 **Branch:** `main` · **Remote:** `https://github.com/DelanoBarreto/ControleProcessoTCE.git`
 
 ---
@@ -34,7 +34,7 @@ git push origin main
 
 Tarefas da Fase 0, em ordem:
 
-1. 🔴 **Localizar os Termos de Uso do Portal Contexto do TCE** — *bloqueante*. Se restringirem uso automatizado, formalizar pedido de acesso a dados abertos antes de qualquer desenvolvimento.
+1. ✅ ~~Localizar os Termos de Uso do Portal Contexto~~ — pesquisado em 17/09/2026, nenhum termo dedicado publicado. Ver "Pesquisa de termos de uso" em [docs/CONFORMIDADE.md](docs/CONFORMIDADE.md). Resta **formalizar contato institucional** com o TCE-CE (Ouvidoria/TI) antes do lançamento — não bloqueia mais o desenvolvimento.
 2. Mapear as 11 tabelas auxiliares restantes da API (GET retornou 404; testar POST)
 3. Medir o custo real de um sync completo de Horizonte (2.431 processos)
 4. Validar que `tramites[].id` é estável entre coletas
@@ -87,6 +87,16 @@ Errar retorna `lista: []` com **HTTP 200** — falha silenciosa, sem erro. Custo
 
 Detalhes completos em [docs/API_TCE.md](docs/API_TCE.md).
 
+### Existe outra API oficial do TCE-CE — mas não é esta
+
+`https://api-dados-abertos.tce.ce.gov.br/sim/` é uma API de dados abertos **oficial, documentada via Swagger**, do sistema **SIM** (licitações, orçamento, folha, patrimônio municipal). **Não cobre processos/trâmites** — não substitui a API do Contexto que o projeto usa. Não confundir as duas.
+
+Relevante mesmo assim: a política de uso dela mostra que o TCE-CE **incentiva publicamente automação de consulta a dados abertos** — ("*use para criar aplicações, automatizar consultas*"), o que reforça a leitura de boa-fé sobre o uso da API do Contexto. Ver [docs/CONFORMIDADE.md](docs/CONFORMIDADE.md).
+
+### Base normativa do sigilo: Resolução Administrativa nº 05/2024/TCE-CE
+
+O próprio bundle do Contexto cita essa resolução (junto com LGPD e Lei de Acesso à Informação) como base do sigilo de documentos. As flags `sigiloso`/`exibirDocumento` da API já refletem essa norma — o filtro de privacidade do projeto só respeita o que o TCE já sinaliza. Texto integral não localizado publicado; requerer via LAI se necessário.
+
 ---
 
 ## ✅ Decisões tomadas (não reabrir sem motivo)
@@ -125,7 +135,7 @@ Detalhes completos em [docs/API_TCE.md](docs/API_TCE.md).
 
 | # | Pendência | Quando | Status |
 | :--- | :--- | :--- | :--- |
-| 1 | **Termos de Uso do TCE** — bloqueante | Fase 0 | 🔴 aberto |
+| 1 | Formalizar contato institucional com o TCE-CE sobre o uso (pesquisa de termos concluída, nenhum bloqueio encontrado) | Antes do lançamento | ⏳ |
 | 2 | Mapear 11 tabelas auxiliares | Fase 0 | 🔴 aberto |
 | 3 | Parecer jurídico LGPD | Antes do lançamento | ⏳ |
 | 4 | Parecer sobre OAB | Antes do lançamento | ⏳ |
