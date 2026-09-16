@@ -3,7 +3,7 @@
 > **Leia este arquivo primeiro** ao abrir o projeto em outra máquina ou iniciar um chat novo com IA.
 > Ele responde: onde o projeto parou, o que já foi decidido e qual é o próximo passo.
 
-**Última atualização:** 17/09/2026 (revisão técnica pós-segunda-opinião)
+**Última atualização:** 16/09/2026 (Fase 0 — spike técnico concluído, decisão **GO**)
 **Branch:** `main` · **Remote:** `https://github.com/DelanoBarreto/ControleProcessoTCE.git`
 
 ---
@@ -26,21 +26,42 @@ git push origin main
 
 ## 📍 Onde paramos
 
-**Fase atual:** Documentação concluída e **revisada tecnicamente** — **pré-código**
+**Fase atual:** **Fase 0 concluída — decisão GO.** Pronto para a Fase 1 (fundação), ainda **pré-código**.
 
-**Feito:** toda a documentação de fundação do projeto (arquitetura, modelagem, conformidade, plano de MVP, propostas comercial revisadas). Uma segunda opinião técnica (outra IA) revisou a especificação em 17/09/2026 e encontrou 7 problemas reais de design — todos corrigidos na documentação. Nenhuma linha de código de aplicação foi escrita ainda.
+**Feito:** toda a documentação de fundação (arquitetura, modelagem, conformidade, plano de MVP, propostas comerciais), a revisão técnica de segurança que corrigiu 7 falhas de design, e agora o **spike técnico da Fase 0** — todas as 5 investigações foram executadas contra a API real do TCE-CE em 16/09/2026. Nenhuma linha de código de aplicação foi escrita ainda.
 
-> ⚠️ **Antes de implementar, leia "Correções da revisão técnica" abaixo.** São decisões de segurança que mudam trecho de `ARQUITETURA.md` e `MODELAGEM_DADOS.md` — implementar pela versão antiga desses documentos reintroduz falhas já identificadas.
+> ⚠️ **Antes de implementar, leia "Correções da revisão técnica" e "Achados da Fase 0" abaixo.** São decisões de segurança e comportamentos reais da API que mudam trechos de `ARQUITETURA.md`, `MODELAGEM_DADOS.md` e `API_TCE.md` — implementar pela versão antiga desses documentos reintroduz falhas já identificadas.
 
-**Próximo passo:** **Fase 0 — Spike técnico** (ver [docs/PLANO_MVP.md](docs/PLANO_MVP.md))
+**Decisão go/no-go: GO.** Nenhum achado invalida a arquitetura Vercel + Supabase. Os ajustes necessários são de implementação, não de replanejamento.
 
-Tarefas da Fase 0, em ordem:
+**Próximo passo:** **Fase 1 — Fundação** (ver [docs/PLANO_MVP.md](docs/PLANO_MVP.md)): projeto Next.js + Supabase, schema completo, RLS, Supabase Auth, seed dos 184 municípios.
 
-1. ✅ ~~Localizar os Termos de Uso do Portal Contexto~~ — pesquisado em 17/09/2026, nenhum termo dedicado publicado. Ver "Pesquisa de termos de uso" em [docs/CONFORMIDADE.md](docs/CONFORMIDADE.md). Resta **formalizar contato institucional** com o TCE-CE (Ouvidoria/TI) antes do lançamento — não bloqueia mais o desenvolvimento.
-2. Mapear as 11 tabelas auxiliares restantes da API (GET retornou 404; testar POST)
-3. Medir o custo real de um sync completo de Horizonte (2.431 processos)
-4. Validar que `tramites[].id` é estável entre coletas
-5. Levantar amostra de `acao.descricao` para escrever as primeiras regras de classificação
+Duas coisas ficaram pendentes da Fase 0, nenhuma bloqueante:
+- Classificar manualmente as 60 ações coletadas em relevante/rotineira — insumo da Fase 3, não da Fase 1.
+- Investigar 10 processos de Horizonte que não caem em nenhum `exercicio` de 2005–2026 (ver pendência 11).
+
+---
+
+## 🔬 Achados da Fase 0 (16/09/2026)
+
+Spike executado contra a API real. Detalhe completo em [docs/API_TCE.md](docs/API_TCE.md) — resumo do que **muda a implementação**:
+
+| # | Achado | Consequência |
+| :--- | :--- | :--- |
+| 1 | As 11 tabelas auxiliares "faltantes" **não exigiam POST** — estavam em **outro host** (`contexto-api`, não `api-processos`) | Todas mapeadas. `interessado` é um stub inútil (10 registros fixos, ignora todo parâmetro) — **não integrar** |
+| 2 | 🔴 **`qtd` é ignorado** — a API sempre devolve 10 itens/página, testado até `qtd: 500` | Sync de Horizonte = **244 páginas fixas**, não 25. Dimensionar chunking por isso |
+| 3 | 🔴 `exibirDocumento` **nunca foi `true`** em 564 documentos — só `null` ou `false` | Filtro de privacidade precisa ser **allowlist (`=== true`)**. `=== false` deixa passar `null`; `!exibirDocumento` bloqueia tudo |
+| 4 | 🔴 `bloqueioVisualizacao` **não é booleano** — é `null` ou ID (`102203`, `102204`) | `=== true` nunca dispara e **libera documento bloqueado**. Checar `!= null` |
+| 5 | 🟠 `id` das tabelas auxiliares é **int** em `api-processos` e **string** em `contexto-api` | Normalizar tipo no `TceClient` antes de persistir |
+| 6 | 🟠 `numeros` + `filtros: null` → **HTTP 500**; e lote por `numeros` **não traz `tramites`** | Só funciona com `filtros: {}`. Não existe atalho de batching — `porNumero` individual é inevitável |
+| 7 | ✅ `tramites[].id` **estável** (10/10 recoletas idênticas) | Deduplicação por `tramite_id_tce UNIQUE` confirmada |
+| 8 | ✅ `porLista` já traz `dtUltimoEncaminhamento` | Sync diário compara essa data e só detalha o que mudou — evita 2.431 chamadas/dia |
+| 9 | 🟠 `filtros.exercicio` funciona mas **não fecha a conta** (2.421 de 2.431) | **Não usar para particionar o sync** — perderia 10 processos silenciosamente |
+| 10 | 🟠 Mesma ação com `acao.id` diferente por variação de caixa | Agrupar por `descricao.trim().toUpperCase()`, nunca por `acao.id`. `acao` pode vir `null` |
+
+**Custo medido (throttle 1 req/s, sequencial):** carga inicial de Horizonte ≈ **78 min** (244 páginas + 2.431 detalhes a 606ms médios). Excede o limite de uma função serverless — confirma a necessidade do chunking com auto-continuação já previsto na arquitetura.
+
+**Download de documento:** `GET https://api-add.tce.ce.gov.br/arquivos/documento?documento_id={id}` — sem autenticação, devolve PDF direto. Mas, pelo achado 3, nenhum download deve ser oferecido no MVP até se confirmar que `exibirDocumento: true` de fato ocorre em produção.
 
 ---
 
@@ -160,7 +181,7 @@ O próprio bundle do Contexto cita essa resolução (junto com LGPD e Lei de Ace
 | # | Pendência | Quando | Status |
 | :--- | :--- | :--- | :--- |
 | 1 | Formalizar contato institucional com o TCE-CE sobre o uso (pesquisa de termos concluída, nenhum bloqueio encontrado) | Antes do lançamento | ⏳ |
-| 2 | Mapear 11 tabelas auxiliares | Fase 0 | 🔴 aberto |
+| 2 | ~~Mapear 11 tabelas auxiliares~~ — resolvido na Fase 0: era host errado, não método | Fase 0 | ✅ |
 | 3 | Parecer jurídico LGPD | Antes do lançamento | ⏳ |
 | 4 | Parecer sobre OAB | Antes do lançamento | ⏳ |
 | 5 | Política de Privacidade e Termos | Antes do lançamento | ⏳ |
@@ -169,6 +190,10 @@ O próprio bundle do Contexto cita essa resolução (junto com LGPD e Lei de Ace
 | 8 | Gateway de pagamento | Fase 5 | ⏳ |
 | 9 | **Nome comercial** — o atual é de repositório | Antes do lançamento | ⏳ |
 | 10 | Pricing final | Reunião comercial | ⏳ |
+| 11 | 10 processos de Horizonte fora de qualquer `exercicio` 2005–2026 — não impede o MVP (a varredura por página os alcança), mas explica por que `exercicio` não serve para particionar o sync | Quando otimizar o sync | ⏳ |
+| 12 | Qual dos dois catálogos `tipo-documento` (809 itens em `api-processos` vs 569 em `contexto-api`) corresponde a `tipoAtoDocumento` dos documentos | Antes de modelar a tabela (Fase 1) | ⏳ |
+| 13 | Confirmar em produção se `exibirDocumento: true` chega a ocorrer — nenhuma ocorrência em 564 documentos amostrados | Antes de liberar download (Fase 5) | ⏳ |
+| 14 | Classificar as 60 ações coletadas em relevante/rotineira | Início da Fase 3 | ⏳ |
 
 ---
 
@@ -176,8 +201,8 @@ O próprio bundle do Contexto cita essa resolução (junto com LGPD e Lei de Ace
 
 | Fase | Duração | Entrega | Status |
 | :--- | :--- | :--- | :--- |
-| 0 | 1 sem | Spike técnico, go/no-go | ⬜ próxima |
-| 1 | 2 sem | Auth, schema, RLS | ⬜ |
+| 0 | 1 sem | Spike técnico, go/no-go | ✅ **GO** (16/09/2026) |
+| 1 | 2 sem | Auth, schema, RLS | ⬜ próxima |
 | 2 | 3 sem | Ingestão + console interno | ⬜ |
 | 3 | 2 sem | Detecção + notificação | ⬜ |
 | 4 | 3 sem | Painel escritório + suporte | ⬜ |
@@ -194,11 +219,13 @@ Cole isto no começo da conversa:
 ```
 Projeto: Plataforma TCE (c:\Antigravity\Projetos\ControleProcessoTCE)
 
-Leia ESTADO_DO_PROJETO.md na raiz inteiro, incluindo a seção "Correções
-da revisão técnica" — ela lista 7 problemas de segurança já corrigidos
-na documentação (RLS do gestor, autenticação, fila de notificação,
-privacidade, integridade entre tenants). Não reabra essas decisões sem
-motivo novo.
+Leia ESTADO_DO_PROJETO.md na raiz inteiro, incluindo as seções
+"Achados da Fase 0" (comportamentos reais da API, medidos — qtd
+ignorado, flags de privacidade que não são booleanas, hosts das
+tabelas auxiliares) e "Correções da revisão técnica" (7 problemas
+de segurança já corrigidos: RLS do gestor, autenticação, fila de
+notificação, privacidade, integridade entre tenants). Não reabra
+essas decisões nem re-teste a API sem motivo novo.
 
 Depois leia os documentos em docs/ que forem relevantes para a tarefa,
 sempre a versão atual do arquivo (não se guie por PLAN.md, PLAN1.md ou

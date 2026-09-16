@@ -28,16 +28,16 @@ Investigação antes de escrever código de produção. **Pode invalidar premiss
 ### Escopo
 
 1. ✅ ~~**Termos de Uso do Portal Contexto**~~ — pesquisado em 17/09/2026: nenhum termo dedicado publicado, nenhuma restrição a uso automatizado. Ver [CONFORMIDADE.md § Pesquisa de termos de uso](CONFORMIDADE.md). Resta formalizar contato institucional com o TCE-CE antes do lançamento (não bloqueia o desenvolvimento).
-2. **Mapear as 11 tabelas auxiliares restantes** — descobrir o método correto (GET retornou 404; provavelmente POST). Ver [API_TCE.md](API_TCE.md).
-3. **Medir o custo real de um sync de Horizonte** — 2.431 processos, `porLista` + `porNumero` por processo. Cronometrar e estimar quantas invocações da Vercel serão necessárias.
-4. **Validar a deduplicação** — coletar o mesmo processo duas vezes e confirmar que `tramites[].id` é estável.
-5. **Levantar amostra de `acao.descricao`** — base para escrever as primeiras regras de classificação.
+2. ✅ ~~**Mapear as 11 tabelas auxiliares restantes**~~ — resolvido em 16/09/2026: não era o método (GET funciona), era o host. As 11 rotas estão em `contexto-api.tce.ce.gov.br`, não em `api-processos`. Detalhe completo, incluindo a rota `interessado` que deve ser ignorada, em [API_TCE.md](API_TCE.md).
+3. ✅ ~~**Medir o custo real de um sync de Horizonte**~~ — medido em 16/09/2026: `qtd` é ignorado pela API (sempre 10/página); carga inicial completa (244 páginas + 2.431 detalhes, throttle 1 req/s) ≈ **78 minutos**, exige chunking com auto-continuação. Sync diário deve evitar detalhar todo processo comparando `dtUltimoEncaminhamento` já presente na listagem — ver [API_TCE.md § Volume](API_TCE.md).
+4. ✅ ~~**Validar a deduplicação**~~ — confirmado em 16/09/2026: 10/10 processos recoletados tiveram `tramites[].id` idênticos. Estável.
+5. ✅ ~~**Levantar amostra de `acao.descricao`**~~ — coletadas **60 ações distintas** (após normalização) em 583 trâmites de 100 processos de Horizonte, amostrando páginas recentes e antigas. Achados para a Fase 3: a mesma ação aparece com `acao.id` diferente por variação de caixa (`EMITIR CERTIDÃO/EXTRATO DE JULGAMENTO` tem dois ids) — **agrupar por `descricao.trim().toUpperCase()`, nunca por `acao.id`**; `acao` pode vir `null` e `descricao` pode vir vazia. Processos antigos têm histórico muito mais longo (média de 7,4 trâmites, máximo de 60) que os recentes (média 2,1) — dimensionar a classificação para processos com dezenas de trâmites, não a média geral.
 
 ### Aceite
 
-- [ ] Relatório técnico com as respostas acima
-- [ ] Decisão **go / no-go** documentada
-- [ ] Amostra de ações classificadas manualmente (insumo da Fase 3)
+- [x] Relatório técnico com as respostas acima — resultados incorporados a [API_TCE.md](API_TCE.md)
+- [x] Decisão **go / no-go**: **GO.** Nenhum achado invalida a arquitetura Vercel + Supabase; os ajustes necessários (chunking por 244 páginas fixas, delta por `dtUltimoEncaminhamento`, normalização de `id` entre hosts, allowlist estrita em `exibirDocumento`) são de implementação, não de replanejamento.
+- [x] Amostra de ações classificadas manualmente (insumo da Fase 3) — 77 ações distintas coletadas; classificação manual (relevante/rotineira) ainda não feita, fica para o início da Fase 3.
 
 ---
 
