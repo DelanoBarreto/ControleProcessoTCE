@@ -54,3 +54,6 @@ next-env.d.ts
 tmp/
 temp/
 *.tmp
+
+# Ferramentas pessoais de IA (nao pertencem ao projeto)
+CATALOGO-SKILLS.md
