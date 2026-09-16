@@ -2,7 +2,7 @@
 
 Roadmap por fases, com escopo, dependências e critérios de aceite.
 
-**Piloto vendável ao fim da Fase 5** (~13 semanas de desenvolvimento). Fases 6–7 são expansão de valor, não pré-requisito para vender.
+**Piloto vendável ao fim da Fase 5** (~14 semanas de desenvolvimento — Fases 0 a 5: 1+2+3+2+3+3). Fases 6–7 são expansão de valor, não pré-requisito para vender.
 
 ---
 
@@ -49,7 +49,7 @@ Investigação antes de escrever código de produção. **Pode invalidar premiss
 - Projeto Supabase, migrations versionadas
 - Schema completo de [MODELAGEM_DADOS.md](MODELAGEM_DADOS.md) — **todas as tabelas, inclusive as das fases 5–7**
 - RLS e funções auxiliares (`auth_escritorio_id`, `auth_is_superadmin`, `auth_tem_suporte_ativo`)
-- Auth com Iron Session
+- Auth com **Supabase Auth** (não Iron Session — RLS depende de `auth.uid()`, que só existe com o JWT do Supabase na requisição)
 - Middleware protegendo `/admin`, `/gestor`, `/interno`
 - Seed dos 184 municípios (só Horizonte `ativo = true`)
 - Seed dos planos

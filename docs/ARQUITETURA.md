@@ -78,11 +78,27 @@ O filtro vive aqui e em nenhum outro lugar: o dado proibido nunca entra no siste
 
 Trocar por uma API oficial futura, ou estender a outro Tribunal de Contas, é reimplementar esta interface.
 
-### 4. Chunking com cursor persistido
+### 4. Chunking com auto-continuação — não apenas cursor
 
-Funções serverless têm limite de execução. Um sync de 2.431 processos não cabe numa invocação.
+Funções serverless têm limite de execução. Um sync de Horizonte (2.431 processos, `porLista` + `porNumero` por processo, a 1 req/s) leva **~40 minutos só de `porNumero`**, sem contar listagem e retries — muito além de qualquer timeout serverless, e muito além do que um cron `0 3 * * *` (uma vez ao dia) cobre em uma única invocação.
 
-Cada execução processa um lote e grava o progresso em `sync_runs.cursor`. A invocação seguinte retoma dali. O sync é **idempotente**: reexecutar não duplica nada, porque a deduplicação usa `tramite_id_tce UNIQUE`.
+**Ter um cursor não basta.** Cursor persistido responde "de onde continuar"; falta responder **"o que dispara a próxima invocação"**. Sem isso, o sync trava no primeiro lote todo santo dia, e a promessa de alerta em menos de 24h não se sustenta — a segunda página do dia só rodaria no dia seguinte.
+
+**Mecanismo real:** cada invocação, ao terminar seu lote dentro do próprio orçamento de tempo (`maxDuration`, com margem), verifica se `sync_runs.status` ainda é `em_andamento` e, em caso positivo, **dispara a si mesma novamente** via `fetch` assíncrono para a mesma rota, antes de retornar. A cadeia de autoinvocações continua até `cursor_pagina >= total_paginas`, quando marca `status = 'concluido'`.
+
+```
+Cron (1x/dia) → invocação 1 (lote 1) → dispara invocação 2 → lote 2 → dispara invocação 3 → ...
+                                                                              ↓
+                                                        até esgotar as páginas do município ativo
+```
+
+Concorrência: antes de processar, a rota adquire lock otimista em `sync_runs` (`UPDATE ... WHERE status = 'em_andamento' AND locked_until < now()`); uma segunda invocação disparada por engano (retry da própria Vercel, por exemplo) encontra o lock e sai sem reprocessar.
+
+Recuperação: se a cadeia for interrompida (deploy, erro, timeout da rede), a run fica `em_andamento` com `locked_until` no passado. Um cron de **verificação** separado, a cada 15-30 min, retoma qualquer run travada nesse estado — sem isso, uma cadeia quebrada trava até o próximo disparo diário.
+
+Idempotência: reexecutar um lote não duplica nada, porque a deduplicação usa `tramite_id_tce UNIQUE`. Isso cobre reprocessamento de dado, **não** cobre o problema de continuação — os dois mecanismos resolvem coisas diferentes.
+
+> **Carga inicial não deve gerar alerta.** A primeira sincronização de um município encontra milhares de trâmites "novos" simplesmente porque nunca foram vistos — nenhum deles é uma movimentação recente. `sync_runs` marca `carga_inicial: boolean`; enquanto verdadeiro, trâmites são gravados e classificados, mas **não entram na fila de notificação**. Só a partir da segunda execução — quando o comparativo é contra o que já está no banco — um trâmite novo é, de fato, uma novidade.
 
 ### 5. Um service, dois gatilhos
 
@@ -154,11 +170,32 @@ Fila em tabela (`notificacoes`), consumida por cron separado do sync — coleta 
 
 ## Segurança
 
-- **Sessão:** `getIronSession` com AES-256-GCM; cookie `httpOnly`, `secure` em produção, `sameSite: lax`
-- **RLS:** toda tabela de negócio; policies aceitam também sessão de suporte ativa, com **expiração verificada na policy do banco** — sessão vencida para de funcionar mesmo que a UI falhe
+### Identidade: Supabase Auth (decisão revisada)
+
+**A autenticação é o Supabase Auth.** Não usar Iron Session, nem qualquer sessão paralela, para identificar o usuário perante o banco.
+
+Razão — e este é um erro que a primeira versão desta arquitetura cometeu: as policies de RLS dependem de `auth.uid()`, que só existe quando a consulta chega ao Postgres **com o JWT do usuário**. Com uma sessão externa (Iron Session), `auth.uid()` retorna `NULL`, toda a RLS falha fechada, e a saída prática seria usar `service_role` nas consultas de usuário — o que **ignora RLS por completo** e anula o modelo de isolamento multi-tenant inteiro.
+
+> A regra `rule-01` do kit do projeto prescreve `getIronSession`. Ela foi escrita para um contexto **sem RLS do Supabase**. Onde a autorização vive no banco, a identidade precisa chegar ao banco. Esta arquitetura documenta a exceção deliberada.
+
+| Camada | Credencial | Alcance |
+| :--- | :--- | :--- |
+| Consultas de usuário (`/admin`, `/gestor`, `/interno`) | JWT do usuário via Supabase Auth | Sujeito a RLS |
+| Ingestão, cron, tarefas internas | `service_role` em módulo servidor | **Ignora RLS** — nunca em caminho de request de usuário |
+
+Regras:
+
+- `SUPABASE_SERVICE_ROLE_KEY` só em rotas de cron e serviços internos, nunca para servir dados a um usuário autenticado
+- Rota de API que lê ou escreve dado de tenant **usa o cliente com o JWT do requisitante**
+- Nenhum hash de senha próprio, nenhum fluxo de login paralelo
+
+### Demais controles
+
+- **RLS:** toda tabela de negócio, com policies **por operação** (`SELECT`/`INSERT`/`UPDATE`/`DELETE`) e por perfil — nunca uma única `FOR ALL` permissiva; ver [MODELAGEM_DADOS.md](MODELAGEM_DADOS.md#6-row-level-security)
+- **Sessão de suporte:** expiração verificada **na policy do banco**, não na aplicação — sessão vencida para de funcionar mesmo que a UI falhe
 - **Rotas de cron:** protegidas por `CRON_SECRET`
 - **Headers:** CSP e `frame-ancestors 'none'` nas áreas autenticadas
-- **Auditoria:** `logs_auditoria` registra ação sensível com usuário, papel, IP e timestamp
+- **Auditoria:** `logs_auditoria` registra ação sensível com usuário, papel, IP e timestamp; imutável para usuários
 
 ---
 

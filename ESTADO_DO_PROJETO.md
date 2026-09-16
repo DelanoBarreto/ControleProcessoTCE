@@ -3,7 +3,7 @@
 > **Leia este arquivo primeiro** ao abrir o projeto em outra máquina ou iniciar um chat novo com IA.
 > Ele responde: onde o projeto parou, o que já foi decidido e qual é o próximo passo.
 
-**Última atualização:** 17/09/2026
+**Última atualização:** 17/09/2026 (revisão técnica pós-segunda-opinião)
 **Branch:** `main` · **Remote:** `https://github.com/DelanoBarreto/ControleProcessoTCE.git`
 
 ---
@@ -26,9 +26,11 @@ git push origin main
 
 ## 📍 Onde paramos
 
-**Fase atual:** Documentação concluída — **pré-código**
+**Fase atual:** Documentação concluída e **revisada tecnicamente** — **pré-código**
 
-**Feito:** toda a documentação de fundação do projeto (arquitetura, modelagem, conformidade, plano de MVP, propostas comercial revisadas). Nenhuma linha de código de aplicação foi escrita ainda.
+**Feito:** toda a documentação de fundação do projeto (arquitetura, modelagem, conformidade, plano de MVP, propostas comercial revisadas). Uma segunda opinião técnica (outra IA) revisou a especificação em 17/09/2026 e encontrou 7 problemas reais de design — todos corrigidos na documentação. Nenhuma linha de código de aplicação foi escrita ainda.
+
+> ⚠️ **Antes de implementar, leia "Correções da revisão técnica" abaixo.** São decisões de segurança que mudam trecho de `ARQUITETURA.md` e `MODELAGEM_DADOS.md` — implementar pela versão antiga desses documentos reintroduz falhas já identificadas.
 
 **Próximo passo:** **Fase 0 — Spike técnico** (ver [docs/PLANO_MVP.md](docs/PLANO_MVP.md))
 
@@ -39,6 +41,26 @@ Tarefas da Fase 0, em ordem:
 3. Medir o custo real de um sync completo de Horizonte (2.431 processos)
 4. Validar que `tramites[].id` é estável entre coletas
 5. Levantar amostra de `acao.descricao` para escrever as primeiras regras de classificação
+
+---
+
+## 🛠️ Correções da revisão técnica (17/09/2026)
+
+Uma segunda IA revisou a especificação e apontou 7 problemas reais. Todos corrigidos nos documentos-fonte — resumo do que mudou e **onde ler o detalhe**:
+
+| # | Problema | Correção | Onde |
+| :--- | :--- | :--- | :--- |
+| 1 | 🔴 RLS do gestor não isolava — `OR` entre policies permitia ver todos os clientes do escritório | Condição de perfil movida para **dentro** da mesma policy (`AND`), nunca policy adicional | [MODELAGEM_DADOS.md § Gestor público](docs/MODELAGEM_DADOS.md) |
+| 2 | 🔴 Iron Session ≠ `auth.uid()` — RLS dependia de identidade que a sessão não fornecia | **Supabase Auth** é a identidade única; Iron Session removido de toda a doc | [ARQUITETURA.md § Segurança](docs/ARQUITETURA.md) |
+| 3 | 🟠 Policy `FOR ALL` dava ao suporte poder de deletar, contradizendo o texto | Policies **por operação** (`SELECT`/`INSERT`/`UPDATE`/`DELETE`); suporte nunca entra na de `DELETE` | [MODELAGEM_DADOS.md § Padrão para tabela de tenant](docs/MODELAGEM_DADOS.md) |
+| 4 | 🟠 Cron diário não continuava lotes no mesmo ciclo — sync de Horizonte leva ~40min só de `porNumero` | Auto-continuação por autoinvocação + lock otimista + `carga_inicial` (não notifica na primeira sync) | [ARQUITETURA.md § Chunking com auto-continuação](docs/ARQUITETURA.md) |
+| 5 | 🟠 Fila de notificação sem chave de entrega nem aquisição exclusiva — risco de duplicar envio | `UNIQUE (tramite_id, destinatario_id, canal)` + `FOR UPDATE SKIP LOCKED` | [MODELAGEM_DADOS.md § notificacoes](docs/MODELAGEM_DADOS.md) |
+| 6 | 🟠 `raw` (jsonb) guardava a resposta crua, vazando nome de interessado `preservado` por um caminho lateral | Filtro de privacidade sanitiza `raw` também; + reconciliação para processo que vira sigiloso depois de coletado | [MODELAGEM_DADOS.md § raw / Reconciliação](docs/MODELAGEM_DADOS.md) |
+| 7 | 🟠 Aprovação podia referenciar versão inexistente; `CASCADE` apagava a "prova imutável" junto com a peça | FK composta `(peca_id, versao)`; `CASCADE` removido de `pecas_aprovacoes`/`pecas_comentarios`; imutabilidade garantida por ausência de policy de `UPDATE`/`DELETE` | [MODELAGEM_DADOS.md § Peças e aprovação](docs/MODELAGEM_DADOS.md) |
+
+Também corrigido: inconsistência de cronograma (proposta pública dizia 13 semanas; soma real das Fases 0–5 é **14**).
+
+**Decisão explícita tomada durante essa revisão:** a mesma segunda IA sugeriu compartilhar o projeto Supabase com o PortalGov (schemas `tce_app`/`tce_dados`/`tce_operacao`). **Rejeitado.** `service_role` não respeita schema — ignora RLS do projeto inteiro. Compartilhar acopla o blast radius de dois produtos diferentes. **O TCE usa projeto Supabase próprio**, separado do PortalGov.
 
 ---
 
@@ -104,6 +126,8 @@ O próprio bundle do Contexto cita essa resolução (junto com LGPD e Lei de Ace
 | Decisão | Escolha | Razão |
 | :--- | :--- | :--- |
 | Infraestrutura | Vercel + Supabase (serverless) | API pública elimina necessidade de VPS |
+| Projeto Supabase | **Próprio do TCE**, não compartilhado com PortalGov | `service_role` ignora RLS de todo o projeto; compartilhar acopla o blast radius de dois produtos |
+| Identidade | **Supabase Auth** (não Iron Session) | RLS depende de `auth.uid()`, que só existe com JWT do Supabase na requisição |
 | Coleta | Por **município**, não por assinante | Custo marginal por cliente ≈ zero |
 | Piloto | Só Horizonte, arquitetura multi-município | Expansão vira toggle, não refactor |
 | Dados sigilosos | **Nunca persistidos** | Indefensável perante LGPD |
@@ -170,14 +194,21 @@ Cole isto no começo da conversa:
 ```
 Projeto: Plataforma TCE (c:\Antigravity\Projetos\ControleProcessoTCE)
 
-Leia ESTADO_DO_PROJETO.md na raiz — ele tem onde paramos, as decisões
-já tomadas e o próximo passo. Depois leia os documentos em docs/ que
-forem relevantes para a tarefa.
+Leia ESTADO_DO_PROJETO.md na raiz inteiro, incluindo a seção "Correções
+da revisão técnica" — ela lista 7 problemas de segurança já corrigidos
+na documentação (RLS do gestor, autenticação, fila de notificação,
+privacidade, integridade entre tenants). Não reabra essas decisões sem
+motivo novo.
 
-Tarefa de hoje: [DESCREVA AQUI]
+Depois leia os documentos em docs/ que forem relevantes para a tarefa,
+sempre a versão atual do arquivo (não se guie por PLAN.md, PLAN1.md ou
+qualquer análise solta — a fonte de verdade é docs/ e este arquivo).
+
+Tarefa de hoje: [DESCREVA AQUI — ex: "iniciar a Fase 0" ou
+"criar o projeto Next.js e Supabase da Fase 1"]
 ```
 
-Isso evita que a IA refaça análise já feita ou reabra decisão já tomada.
+Isso evita que a IA refaça análise já feita, reabra decisão já tomada, ou reintroduza um bug de RLS já corrigido.
 
 ---
 

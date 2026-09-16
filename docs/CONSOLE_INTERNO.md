@@ -23,16 +23,24 @@
 Bloqueio **no middleware**, uma vez, para todo o prefixo:
 
 ```ts
-// middleware.ts
+// middleware.ts — identidade via Supabase Auth, nunca sessão paralela
 if (pathname.startsWith('/interno')) {
-  const session = await getIronSession(cookies(), sessionOptions)
-  if (!session.user?.isSuperadmin) {
+  const supabase = createMiddlewareClient({ req, res })
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const { data: perfil } = await supabase
+    .from('usuarios')
+    .select('is_superadmin')
+    .eq('id', user?.id)
+    .single()
+
+  if (!perfil?.is_superadmin) {
     return NextResponse.redirect(new URL('/admin', request.url))
   }
 }
 ```
 
-Nenhuma checagem espalhada por subrota — um ponto de entrada, uma verificação. As policies do banco reforçam no nível dos dados (`auth_is_superadmin()`), de modo que uma falha na UI não expõe registro algum.
+Nenhuma checagem espalhada por subrota — um ponto de entrada, uma verificação. As policies do banco reforçam no nível dos dados (`auth_is_superadmin()`), de modo que uma falha na UI não expõe registro algum — a mesma consulta `usuarios.is_superadmin` que o middleware faz é a que a função `auth_is_superadmin()` executa dentro da policy, contra `auth.uid()`.
 
 ---
 

@@ -151,7 +151,7 @@ O piloto será considerado validado se, ao seu término:
 
 ### Prazo estimado
 
-Aproximadamente **13 semanas** até a versão utilizável em produção, distribuídas em fases com entregas verificáveis. Recursos complementares — relatórios gerenciais, modelos de documento e assistente de IA — seguem em fases posteriores.
+Aproximadamente **14 semanas** até a versão utilizável em produção, distribuídas em fases com entregas verificáveis. Recursos complementares — relatórios gerenciais, modelos de documento e assistente de IA — seguem em fases posteriores.
 
 ---
 

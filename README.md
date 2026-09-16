@@ -119,8 +119,7 @@ npm run dev   # http://localhost:3000
 | :--- | :--- |
 | `NEXT_PUBLIC_SUPABASE_URL` | URL do projeto Supabase |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Chave pública (client) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Chave privilegiada — **apenas em rotas de API**, nunca em `/app` ou `/components` |
-| `SESSION_SECRET` | Segredo do Iron Session (AES-256-GCM) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Chave privilegiada — **apenas em cron/rotas internas**, nunca para servir dados de usuário nem em `/app` ou `/components` |
 | `TCE_API_BASE_URL` | `https://api-processos.tce.ce.gov.br` |
 | `RESEND_API_KEY` | Envio de e-mail |
 | `WHATSAPP_TOKEN` · `WHATSAPP_PHONE_ID` | WhatsApp Cloud API |

@@ -210,7 +210,7 @@ SELECT count(*) FROM interessados WHERE preservado = true AND nome IS NOT NULL;
 | :--- | :--- |
 | Isolamento multi-tenant | RLS em toda tabela de negócio |
 | Acesso de suporte | Sessão temporária, com motivo, auditada e visível ao cliente |
-| Sessão de usuário | Iron Session AES-256-GCM; cookie `httpOnly`, `secure`, `sameSite: lax` |
+| Sessão de usuário | Supabase Auth (JWT); cookie de sessão `httpOnly`, `secure`, `sameSite: lax` |
 | Senhas | bcrypt, custo 12 |
 | Tokens | `secrets.token_urlsafe(32)` |
 | Segredos de API | Criptografados em repouso; nunca em log |
