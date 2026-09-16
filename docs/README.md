@@ -1,38 +1,53 @@
-# ControleProcessoTCE — Painel Administrativo
+# Documentação — Plataforma TCE
 
-> Sistema de gestão de Controle de Processos do TCE construído com Next.js, Supabase e Padrão V4 Elite.
+Índice dos documentos do projeto. O ponto de entrada geral é o [README da raiz](../README.md).
 
-## 🚀 Quick Start (< 5 minutos)
+---
 
-```bash
-# 1. Clonar o repositório
-git clone [url] && cd [pasta]
+## Técnicos
 
-# 2. Instalar dependências
-npm install
+| Documento | Quando ler |
+| :--- | :--- |
+| [ARQUITETURA.md](ARQUITETURA.md) | Antes de escrever código. Camadas, fluxo de dados, decisões estruturais |
+| [MODELAGEM_DADOS.md](MODELAGEM_DADOS.md) | Ao mexer em schema, query ou RLS |
+| [API_TCE.md](API_TCE.md) | Ao trabalhar na coleta. Endpoints, campos e armadilhas verificadas |
+| [CONSOLE_INTERNO.md](CONSOLE_INTERNO.md) | Ao mexer em `/interno/*`, permissões ou suporte |
 
-# 3. Configurar variáveis de ambiente
-cp .env.example .env.local
-# Preencher NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY
+## Conformidade
 
-# 4. Rodar localmente
-npm run dev
-# Acesse: http://localhost:3000/admin/login
-```
+| Documento | Quando ler |
+| :--- | :--- |
+| [CONFORMIDADE.md](CONFORMIDADE.md) | **Obrigatório** antes de alterar coleta, notificação ou tratamento de dado pessoal |
 
-## 📦 Módulos Disponíveis
+## Produto
 
-| Módulo | Rota | Descrição |
-| :--- | :--- | :--- |
-| **Processos** | `/admin/processos` | Gestão de processos do TCE, responsáveis, status e prazos. |
-| **Clientes/Entidades** | `/admin/entidades` | Gestão das entidades vinculadas aos processos. |
-| **Prazos e Tarefas** | `/admin/prazos` | Controle de prazos e tarefas de auditoria/defesa. |
-| **Usuários** | `/admin/usuarios` | Gestão de perfis de acesso do painel. |
+| Documento | Conteúdo |
+| :--- | :--- |
+| [PLANO_MVP.md](PLANO_MVP.md) | Roadmap por fases, guia Vercel/Supabase, análise competitiva |
+| [proposta/PROPOSTA_PUBLICA.md](proposta/PROPOSTA_PUBLICA.md) | Proposta comercial — versão que circula |
+| [proposta/PROPOSTA_INTERNA.md](proposta/PROPOSTA_INTERNA.md) | 🔒 Versão interna — piloto nominal, custos, riscos |
 
-## 🛠️ Stack
-- Next.js 14+ + TypeScript + Tailwind CSS
-- Supabase (PostgreSQL + Auth + Storage)
-- TanStack Query + Framer Motion + Lucide React
+## Padrões de código
 
-## 🤖 Desenvolvimento com IA
-Este projeto usa o Antigravity Kit. Leia `.agent/` e `docs/PADRAO_V4_ELITE.md` antes de codar.
+| Documento | Conteúdo |
+| :--- | :--- |
+| [PADRAO_V4_ELITE.md](PADRAO_V4_ELITE.md) | Padrão de UI: formulários, listagens, estados |
+| [TEMPLATE_NOVO_SISTEMA.md](TEMPLATE_NOVO_SISTEMA.md) | Template de novo módulo |
+| [COMANDOS.md](COMANDOS.md) | Comandos frequentes |
+| [CHECKLIST_NOVO.md](CHECKLIST_NOVO.md) | Checklist de nova funcionalidade |
+
+---
+
+## Por onde começar
+
+**Novo no projeto?** [README da raiz](../README.md) → [ARQUITETURA.md](ARQUITETURA.md) → [MODELAGEM_DADOS.md](MODELAGEM_DADOS.md)
+
+**Vai mexer na coleta?** [API_TCE.md](API_TCE.md) → [CONFORMIDADE.md](CONFORMIDADE.md)
+
+**Vai implementar uma fase?** [PLANO_MVP.md](PLANO_MVP.md)
+
+---
+
+## Arquivos originais
+
+Os `.docx` e `.pdf` nesta pasta são as versões originais da proposta, anteriores à revisão. Mantidos como histórico. A versão vigente está em [proposta/](proposta/).
