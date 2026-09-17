@@ -3,8 +3,8 @@
 > **Leia este arquivo primeiro** ao abrir o projeto em outra máquina ou iniciar um chat novo com IA.
 > Ele responde: onde o projeto parou, o que já foi decidido e qual é o próximo passo.
 
-**Última atualização:** 16/09/2026 (Fase 1 em andamento — schema do banco criado e aplicado)
-**Branch:** `feat/fase-1-fundacao` (não mergeada em `main`) · **Remote:** `https://github.com/DelanoBarreto/ControleProcessoTCE.git`
+**Última atualização:** 17/09/2026 (Fase 1 — banco + app Next.js prontos; falta rodar os testes de aceite)
+**Branch:** `feat/fase-1-fundacao` — **no GitHub**, não mergeada em `main` · **Remote:** `https://github.com/DelanoBarreto/ControleProcessoTCE.git`
 
 ---
 
@@ -26,28 +26,72 @@ git push origin main
 
 ## 📍 Onde paramos
 
-**Fase atual:** **Fase 1 (Fundação) em andamento.** O banco de dados está criado, aplicado e com seed. O projeto Next.js **ainda não existe** — é o próximo passo.
+**Fase atual:** **Fase 1 (Fundação) quase completa.** Banco criado e populado, aplicação Next.js rodando, login funcionando no navegador. Falta **rodar os testes de aceite**.
 
-**Feito nesta sessão (16/09/2026):**
-- Criado o projeto Supabase **`Plataforma-Sistemas`** (ref `lwvwuhkwdrbmvwymbpwe`, `sa-east-1`), próprio, sem compartilhar com o PortalGov.
-- **7 migrations** escritas e aplicadas com sucesso em `supabase/migrations/`: schema `plataforma` (identidade multi-sistema) + schema `tce` (espelho da API, operação, tenant) + RLS completa + seed.
-- Seed aplicado: sistemas, papéis do TCE, **184 municípios do Ceará** (copiados de `plataforma.catalogo_municipios` do PortalGov), Horizonte ativo, 4 planos.
-- Tudo commitado na branch `feat/fase-1-fundacao` (commit `d22010f`), **ainda não mergeado em `main`**, **ainda não empurrado para o GitHub** (verificar `git push` antes de trocar de máquina/IA).
+### 🏠 Para continuar em outro computador
 
-> ⚠️ **Antes de continuar, leia "Decisão arquitetural: banco compartilhado multi-sistema" abaixo.** Esta sessão tomou uma decisão que **diverge de `docs/MODELAGEM_DADOS.md`**: a identidade (`escritorios`/`usuarios`) não é exclusiva do TCE — é um schema `plataforma` compartilhado com outros sistemas que vierem a existir (clínicas, gerencial, tarefas). Ler `MODELAGEM_DADOS.md` sozinho, sem esta seção, leva a reimplementar tabelas que já existem com nome diferente.
+```bash
+git clone https://github.com/DelanoBarreto/ControleProcessoTCE.git
+cd ControleProcessoTCE
+git checkout feat/fase-1-fundacao    # o trabalho NAO esta na main
+npm install
+```
 
-> ⚠️ Continua valendo ler "Correções da revisão técnica" e "Achados da Fase 0" abaixo antes de mexer na ingestão (Fase 2) — nada disso mudou.
+Depois **criar o `.env.local`** (não vai pelo git) com:
 
-**Próximo passo concreto:** criar o projeto Next.js 14 (App Router + TypeScript + Tailwind) na raiz, conectar ao Supabase via `@supabase/ssr`, montar o middleware de proteção de rota, e então dar entrada nos critérios de aceite da Fase 1 (login nos três níveis, teste de dois tenants, 403 em `/interno` sem `is_superadmin`).
+```
+NEXT_PUBLIC_SUPABASE_URL=https://lwvwuhkwdrbmvwymbpwe.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<painel: Settings > API > Publishable key>
+SUPABASE_SECRET_KEY=<painel: Settings > API > Secret keys > Reveal>
+CRON_SECRET=<gerar: openssl rand -base64 32>
+TCE_API_BASE_URL=https://api-processos.tce.ce.gov.br
+TCE_CONTEXTO_API_BASE_URL=https://contexto-api.tce.ce.gov.br
+```
 
-**Pendente antes de seguir:**
-- Preencher `SUPABASE_SECRET_KEY` no `.env.local` (pegar no painel: Settings → API → Secret keys → Reveal). Está em branco de propósito — não foi gerado/copiado por segurança.
-- Decidir se a `service_role` do projeto é usada para operações administrativas gerais, ou se **só** a role dedicada `tce_ingestor` (criada na migration de RLS) deve tocar no espelho do TCE. Ver a seção de decisão abaixo.
-- Rodar `npm install` (o `package.json` já existe, mas `node_modules` não foi instalado nesta sessão).
+Então `npm run dev` → http://localhost:3000.
 
-Duas coisas ficaram pendentes da Fase 0, nenhuma bloqueante:
-- Classificar manualmente as 60 ações coletadas em relevante/rotineira — insumo da Fase 3, não da Fase 1.
-- Investigar 10 processos de Horizonte que não caem em nenhum `exercicio` de 2005–2026 (ver pendência 11).
+**Usuários de teste já criados no banco** (senha `Teste1234`, apagar antes de produção):
+
+| E-mail | Papel | Organização |
+| :--- | :--- | :--- |
+| `adv.a@teste.local` | advogado | Escritorio A |
+| `adv.b@teste.local` | advogado | Escritorio B |
+| `super@teste.local` | superadmin | — (papel de plataforma) |
+
+### Feito na sessão de 16–17/09/2026
+
+- Criado o projeto Supabase **`Plataforma-Sistemas`** (ref `lwvwuhkwdrbmvwymbpwe`, `sa-east-1`).
+- **8 migrations** aplicadas: schema `plataforma` (identidade multi-sistema) + schema `tce` (espelho da API, operação, tenant) + RLS completa + RPCs wrapper + seed.
+- Seed: sistemas, papéis, **184 municípios do Ceará**, Horizonte ativo, 4 planos.
+- **App Next.js 14** (App Router, TypeScript, Tailwind): clientes Supabase separados por responsabilidade, middleware protegendo `/admin`/`/gestor`/`/interno`, telas mínimas das três áreas, CSP e `frame-ancestors 'none'`.
+- Schema `tce` **exposto na API REST** do Supabase (Settings → API → Exposed schemas). `plataforma` permanece **não exposto**, de propósito.
+- **Login testado no navegador**: autentica e redireciona para `/admin`.
+- 3 commits na branch `feat/fase-1-fundacao`, **já no GitHub**: `d22010f` (schema), `476fdb8` (docs), `f4a818a` (app).
+
+> ⚠️ **Antes de continuar, leia "Decisão arquitetural: banco compartilhado multi-sistema" e "Armadilhas da Fase 1" abaixo.** A identidade **diverge de `docs/MODELAGEM_DADOS.md`**: `escritorios`/`usuarios` viraram `plataforma.organizacoes`/`plataforma.usuarios_sistema`. Ler aquele documento sozinho leva a reimplementar tabelas que já existem com outro nome.
+
+### ▶️ Próximo passo concreto
+
+**Rodar os critérios de aceite da Fase 1**, que ficaram por fazer (o schema só foi exposto na API no fim da sessão, e não deu tempo de reexecutar os testes):
+
+- [ ] Login funcional nos três níveis — **parcial**: testado com `adv.a@teste.local`, falta `adv.b` e `super`
+- [ ] **Teste com dois tenants**: logar como A e como B; cada um deve ver **1** processo monitorado, nunca 2. Os dois escritórios monitoram o *mesmo* processo (`TESTE-0001/2026`) justamente para que uma falha de RLS fique visível como contagem 2.
+- [ ] `super@teste.local` acessa `/interno`; `adv.a@teste.local` recebe **403** lá, inclusive por URL direta
+- [x] Migrations aplicam em banco limpo sem erro
+
+Como testar rápido: `npm run dev`, abrir http://localhost:3000/login, logar com cada usuário e conferir os números.
+
+**Depois disso**, a Fase 1 fecha e começa a **Fase 2 — Ingestão** (`TceClient`, sync com chunking, console `/interno`).
+
+### Pendências desta fase
+
+- **`SUPABASE_SECRET_KEY` estava vazia** no `.env.local` da máquina do escritório. Não bloqueou o login (que usa a chave publicável), mas bloqueia rotas de API administrativas. Preencher.
+- Decidir se a `service_role` serve operações administrativas gerais ou se **só** a role `tce_ingestor` toca no espelho do TCE (ver seção de decisão abaixo).
+- Apagar os usuários e dados de teste antes de produção (`adv.a`, `adv.b`, `super`, escritórios A/B, processo `TESTE-0001/2026`).
+
+Pendentes da Fase 0, nenhuma bloqueante:
+- Classificar manualmente as 60 ações coletadas em relevante/rotineira — insumo da Fase 3.
+- Investigar 10 processos de Horizonte fora de qualquer `exercicio` 2005–2026 (pendência 11).
 
 ---
 
@@ -254,7 +298,7 @@ O próprio bundle do Contexto cita essa resolução (junto com LGPD e Lei de Ace
 | Fase | Duração | Entrega | Status |
 | :--- | :--- | :--- | :--- |
 | 0 | 1 sem | Spike técnico, go/no-go | ✅ **GO** (16/09/2026) |
-| 1 | 2 sem | Auth, schema, RLS | 🔶 em andamento — schema/RLS/seed feitos; falta o projeto Next.js e Auth |
+| 1 | 2 sem | Auth, schema, RLS | 🔶 quase — banco, app e login prontos; faltam os testes de aceite |
 | 2 | 3 sem | Ingestão + console interno | ⬜ |
 | 3 | 2 sem | Detecção + notificação | ⬜ |
 | 4 | 3 sem | Painel escritório + suporte | ⬜ |
