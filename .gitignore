@@ -57,3 +57,6 @@ temp/
 
 # Ferramentas pessoais de IA (nao pertencem ao projeto)
 CATALOGO-SKILLS.md
+
+# Artefatos do Playwright CLI (snapshots, logs de console)
+.playwright-cli/

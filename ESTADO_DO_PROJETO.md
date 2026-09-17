@@ -104,6 +104,18 @@ Spike executado contra a API real. Detalhe completo em [docs/API_TCE.md](docs/AP
 
 ---
 
+## ⚠️ Armadilhas da Fase 1 (descobertas testando)
+
+Duas coisas que custaram tempo e não estão em nenhum documento de arquitetura:
+
+**1. Schema fora de `public` não é visível pela API REST até ser exposto no painel.**
+Criar as tabelas em `tce` não basta: o PostgREST só serve schemas listados em **Settings → API → Exposed schemas** (padrão: só `public`). Sem isso, toda query volta `PGRST106 — Invalid schema: tce`, e o efeito prático é a aplicação se comportar como se o usuário não tivesse permissão (redireciona para login, contagens zeradas) em vez de dar erro claro. **`tce` está exposto; `plataforma` não** — e é deliberado: a camada de identidade é alcançada apenas pelas funções wrapper em `tce.*` (`meu_contexto`, `meu_papel`, `tenho_acesso`…), nunca direto pelo cliente.
+
+**2. Inserir usuário direto em `auth.users` quebra o login com HTTP 500.**
+O GoTrue lê `confirmation_token`, `recovery_token`, `email_change`, `phone_change`, `reauthentication_token` e similares como string não-nula. Um `INSERT` manual deixa esses campos `NULL` e o login falha com `Scan error on column index 3, name "confirmation_token": converting NULL to string is unsupported` — que aparece na tela como "e-mail ou senha incorretos", mandando quem depura para o lado errado. Ou preencher com `''`, ou (preferível) criar usuário pela API de admin do Supabase.
+
+---
+
 ## 🛠️ Correções da revisão técnica (17/09/2026)
 
 Uma segunda IA revisou a especificação e apontou 7 problemas reais. Todos corrigidos nos documentos-fonte — resumo do que mudou e **onde ler o detalhe**:
