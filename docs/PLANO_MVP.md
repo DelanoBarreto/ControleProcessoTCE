@@ -192,11 +192,15 @@ Passo a passo para quem nunca usou. Execute na ordem.
 
 ## Parte 1 — Supabase
 
-### 1.1 Criar o projeto
+### 1.1 Projeto já criado
+
+> ✅ **Feito em 16/09/2026.** O projeto **`Plataforma-Sistemas`** (ref `lwvwuhkwdrbmvwymbpwe`, região `sa-east-1`) já existe e já tem o schema aplicado. Ver [ESTADO_DO_PROJETO.md § Decisão arquitetural](../ESTADO_DO_PROJETO.md) antes de criar qualquer coisa nova — este não é um projeto exclusivo do TCE, é compartilhado com outros sistemas (schema `plataforma` para identidade comum, schema `tce` para os dados deste sistema).
+>
+> Os passos abaixo (1.1 a 1.4 originais) ficam como referência para quando o projeto de **produção** for criado — repita o mesmo padrão de schemas, não crie `escritorios`/`usuarios` soltos em `public`.
 
 1. Acesse [supabase.com](https://supabase.com) e crie conta
 2. **New Project**
-   - Name: `plataforma-tce-dev`
+   - Name: `Plataforma-Sistemas-Prod` (ou equivalente — nunca reaproveitar o projeto de dev)
    - Database Password: gere uma forte e **guarde** — não dá para recuperar
    - Region: **South America (São Paulo)** — menor latência
    - Plan: Free
@@ -211,26 +215,28 @@ Passo a passo para quem nunca usou. Execute na ordem.
 | Campo | Vai para |
 | :--- | :--- |
 | Project URL | `NEXT_PUBLIC_SUPABASE_URL` |
-| `anon` `public` | `NEXT_PUBLIC_SUPABASE_ANON_KEY` |
-| `service_role` `secret` | `SUPABASE_SERVICE_ROLE_KEY` |
+| `publishable` (nomenclatura nova; `anon` `public` em projetos antigos) | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` |
+| `secret` (nomenclatura nova; `service_role` em projetos antigos) | `SUPABASE_SECRET_KEY` |
 
-> ⚠️ A `service_role` **ignora RLS**. Nunca em `/app`, `/components`, nem em variável com prefixo `NEXT_PUBLIC_`. Só em rotas de API.
+> ⚠️ A chave secreta/`service_role` **ignora RLS**. Nunca em `/app`, `/components`, nem em variável com prefixo `NEXT_PUBLIC_`. Só em rotas de API.
+>
+> Para o cron de ingestão do TCE especificamente: **não** usar a chave secreta do projeto — ela alcançaria os schemas de outros sistemas hospedados aqui. Usar a role de banco dedicada `tce_ingestor` (criada na migration de RLS), conectando via connection string do Postgres, não via API REST.
 
 ### 1.3 CLI e migrations
 
 ```bash
 npm install -g supabase
 supabase login
-supabase init                      # cria supabase/ no projeto
-supabase link --project-ref <ref>  # ref está na URL do dashboard
+supabase init                      # cria supabase/ no projeto (já existe neste repo)
+supabase link --project-ref lwvwuhkwdrbmvwymbpwe
 
-supabase migration new schema_inicial
-# escreva o SQL em supabase/migrations/<timestamp>_schema_inicial.sql
+supabase migration new nome_da_mudanca
+# escreva o SQL em supabase/migrations/<timestamp>_nome_da_mudanca.sql
 
 supabase db push                   # aplica no projeto remoto
 ```
 
-Alterou o schema? **Nova migration**, nunca editar uma já aplicada.
+Alterou o schema? **Nova migration**, nunca editar uma já aplicada. As 7 migrations da Fase 1 (schema `plataforma` + `tce`, RLS, seed) já estão em `supabase/migrations/` e já foram aplicadas — não reaplicar do zero, só adicionar migrations novas por cima.
 
 ### 1.4 Conferir a RLS
 

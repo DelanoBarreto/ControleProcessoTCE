@@ -3,8 +3,8 @@
 > **Leia este arquivo primeiro** ao abrir o projeto em outra máquina ou iniciar um chat novo com IA.
 > Ele responde: onde o projeto parou, o que já foi decidido e qual é o próximo passo.
 
-**Última atualização:** 16/09/2026 (Fase 0 — spike técnico concluído, decisão **GO**)
-**Branch:** `main` · **Remote:** `https://github.com/DelanoBarreto/ControleProcessoTCE.git`
+**Última atualização:** 16/09/2026 (Fase 1 em andamento — schema do banco criado e aplicado)
+**Branch:** `feat/fase-1-fundacao` (não mergeada em `main`) · **Remote:** `https://github.com/DelanoBarreto/ControleProcessoTCE.git`
 
 ---
 
@@ -26,19 +26,58 @@ git push origin main
 
 ## 📍 Onde paramos
 
-**Fase atual:** **Fase 0 concluída — decisão GO.** Pronto para a Fase 1 (fundação), ainda **pré-código**.
+**Fase atual:** **Fase 1 (Fundação) em andamento.** O banco de dados está criado, aplicado e com seed. O projeto Next.js **ainda não existe** — é o próximo passo.
 
-**Feito:** toda a documentação de fundação (arquitetura, modelagem, conformidade, plano de MVP, propostas comerciais), a revisão técnica de segurança que corrigiu 7 falhas de design, e agora o **spike técnico da Fase 0** — todas as 5 investigações foram executadas contra a API real do TCE-CE em 16/09/2026. Nenhuma linha de código de aplicação foi escrita ainda.
+**Feito nesta sessão (16/09/2026):**
+- Criado o projeto Supabase **`Plataforma-Sistemas`** (ref `lwvwuhkwdrbmvwymbpwe`, `sa-east-1`), próprio, sem compartilhar com o PortalGov.
+- **7 migrations** escritas e aplicadas com sucesso em `supabase/migrations/`: schema `plataforma` (identidade multi-sistema) + schema `tce` (espelho da API, operação, tenant) + RLS completa + seed.
+- Seed aplicado: sistemas, papéis do TCE, **184 municípios do Ceará** (copiados de `plataforma.catalogo_municipios` do PortalGov), Horizonte ativo, 4 planos.
+- Tudo commitado na branch `feat/fase-1-fundacao` (commit `d22010f`), **ainda não mergeado em `main`**, **ainda não empurrado para o GitHub** (verificar `git push` antes de trocar de máquina/IA).
 
-> ⚠️ **Antes de implementar, leia "Correções da revisão técnica" e "Achados da Fase 0" abaixo.** São decisões de segurança e comportamentos reais da API que mudam trechos de `ARQUITETURA.md`, `MODELAGEM_DADOS.md` e `API_TCE.md` — implementar pela versão antiga desses documentos reintroduz falhas já identificadas.
+> ⚠️ **Antes de continuar, leia "Decisão arquitetural: banco compartilhado multi-sistema" abaixo.** Esta sessão tomou uma decisão que **diverge de `docs/MODELAGEM_DADOS.md`**: a identidade (`escritorios`/`usuarios`) não é exclusiva do TCE — é um schema `plataforma` compartilhado com outros sistemas que vierem a existir (clínicas, gerencial, tarefas). Ler `MODELAGEM_DADOS.md` sozinho, sem esta seção, leva a reimplementar tabelas que já existem com nome diferente.
 
-**Decisão go/no-go: GO.** Nenhum achado invalida a arquitetura Vercel + Supabase. Os ajustes necessários são de implementação, não de replanejamento.
+> ⚠️ Continua valendo ler "Correções da revisão técnica" e "Achados da Fase 0" abaixo antes de mexer na ingestão (Fase 2) — nada disso mudou.
 
-**Próximo passo:** **Fase 1 — Fundação** (ver [docs/PLANO_MVP.md](docs/PLANO_MVP.md)): projeto Next.js + Supabase, schema completo, RLS, Supabase Auth, seed dos 184 municípios.
+**Próximo passo concreto:** criar o projeto Next.js 14 (App Router + TypeScript + Tailwind) na raiz, conectar ao Supabase via `@supabase/ssr`, montar o middleware de proteção de rota, e então dar entrada nos critérios de aceite da Fase 1 (login nos três níveis, teste de dois tenants, 403 em `/interno` sem `is_superadmin`).
+
+**Pendente antes de seguir:**
+- Preencher `SUPABASE_SECRET_KEY` no `.env.local` (pegar no painel: Settings → API → Secret keys → Reveal). Está em branco de propósito — não foi gerado/copiado por segurança.
+- Decidir se a `service_role` do projeto é usada para operações administrativas gerais, ou se **só** a role dedicada `tce_ingestor` (criada na migration de RLS) deve tocar no espelho do TCE. Ver a seção de decisão abaixo.
+- Rodar `npm install` (o `package.json` já existe, mas `node_modules` não foi instalado nesta sessão).
 
 Duas coisas ficaram pendentes da Fase 0, nenhuma bloqueante:
 - Classificar manualmente as 60 ações coletadas em relevante/rotineira — insumo da Fase 3, não da Fase 1.
 - Investigar 10 processos de Horizonte que não caem em nenhum `exercicio` de 2005–2026 (ver pendência 11).
+
+---
+
+## 🏗️ Decisão arquitetural: banco compartilhado multi-sistema (16/09/2026)
+
+**Contexto que motivou a mudança:** durante a Fase 1, foi descoberto que um `.env.local` já existia no projeto com chaves reais — mas apontando para o **banco de produção do PortalGov** (`PortalGov-Producao`), não para um banco do TCE. Nenhuma escrita foi feita nele (só leitura de metadados para diagnóstico). O usuário então explicou a intenção real: o banco do TCE não vai hospedar só o TCE — vai hospedar **múltiplos sistemas futuros** (clínicas, gerencial, planejamento de tarefas, etc.), no mesmo padrão que o `PortalGov-Producao` já usa para hospedar PortalGov + TCE Gerencial.
+
+**Investigação do padrão existente:** o projeto `PortalGov-Producao` foi inspecionado (somente leitura) para entender como aquele compartilhamento funciona de fato. Achado: não é RLS por tabela — é um schema `plataforma` com `usuarios_sistema` (coluna `sistema`) e `organizacoes`, e **toda** autorização passa por funções RPC `SECURITY DEFINER` que verificam o papel em PL/pgSQL. As tabelas de `plataforma` no PortalGov estão **com RLS desabilitada de propósito**, confiando inteiramente nas RPCs.
+
+**Decisão tomada:** criar um projeto Supabase **novo e separado** — `Plataforma-Sistemas` (ref `lwvwuhkwdrbmvwymbpwe`) — replicando esse padrão, mas **não** reaproveitando o projeto do PortalGov nem o `APITCE` existente (que é de outro escopo: dados abertos do SIM/orçamento, não processos). Um projeto por "família" de produtos vinculados ao usuário, não um projeto único para tudo.
+
+**Diferença deliberada em relação ao PortalGov:**
+- Aqui a **RLS fica ligada** em todas as tabelas de `plataforma`, mesmo as de identidade — ao contrário do PortalGov, que desliga e confia só na RPC. Razão: um caminho de acesso futuro que não passe pela RPC falha fechado em vez de expor a base de usuários.
+- Foi adicionado `is_suporte` (boolean, independente do papel) em `usuarios_sistema` — o PortalGov não tem esse conceito. O TCE precisa de sessão de suporte técnico auditada (`plataforma.sessoes_suporte`), prevista desde `MODELAGEM_DADOS.md`.
+- Foi criada uma **role de banco dedicada `tce_ingestor`** (não-login, `GRANT` só nas tabelas do schema `tce`) para o cron de sincronização. **Não usa `service_role`** do projeto: `service_role` alcançaria qualquer schema futuro (clínicas, gerencial), então uma chave vazada ou um bug no cron do TCE não deve conseguir tocar em dados de outro sistema hospedado no mesmo projeto. Isso é mais restrito que o padrão do PortalGov, que usa `service_role` normalmente nas RPCs administrativas.
+
+**Mapeamento de nomes — MODELAGEM_DADOS.md → schema real:**
+
+| `MODELAGEM_DADOS.md` (documento original) | Onde está de fato agora |
+| :--- | :--- |
+| `escritorios` | `plataforma.organizacoes` (genérico, não exclusivo do TCE) |
+| `usuarios` | `plataforma.usuarios_sistema` (com `sistema = 'tce'`) |
+| `usuarios.perfil` | `plataforma.usuarios_sistema.papel` (mesmos valores: `admin_escritorio`/`advogado`/`gestor_publico`) |
+| `usuarios.is_superadmin` | `plataforma.papeis.nivel_plataforma = true` para o papel `superadmin` |
+| `usuarios.is_suporte` | `plataforma.usuarios_sistema.is_suporte` (extensão nova, não existe no PortalGov) |
+| Todo o resto (`processos`, `tramites`, `clientes`, `prazos`, `pecas`, kanban, etc.) | Igual ao documento, só que dentro do schema `tce.*` em vez de `public.*`, e toda referência a `usuarios`/`escritorios` virou referência a `plataforma.usuarios_sistema`/`plataforma.organizacoes` |
+
+**`plataforma.catalogo_municipios`** (184 municípios do Ceará) foi **copiado** do PortalGov, não recriado do zero — é dado estável e já validado lá. É diferente de `tce.municipios`, que guarda o `id` de localidade **da API do TCE** (Horizonte = `72`), que **não é o mesmo número** que `catalogo_municipios.codigo` (Horizonte = `'068'`). As duas tabelas são ligadas por `tce.municipios.codigo_ibge`.
+
+**Impacto em `docs/MODELAGEM_DADOS.md`:** o documento **não foi reescrito ainda** — continua descrevendo `escritorios`/`usuarios` como tabelas próprias do TCE. Isso é intencional por ora (evitar reescrever um documento extenso no meio de uma sessão), mas **precisa ser atualizado** antes que alguém implemente algo lendo só aquele arquivo. Até lá, esta seção do `ESTADO_DO_PROJETO.md` é a fonte de verdade sobre onde cada tabela mora de fato.
 
 ---
 
@@ -167,7 +206,8 @@ O próprio bundle do Contexto cita essa resolução (junto com LGPD e Lei de Ace
 | :--- | :--- |
 | Visão geral, setup, stack | [README.md](README.md) |
 | Como o sistema funciona | [docs/ARQUITETURA.md](docs/ARQUITETURA.md) |
-| Schema, tabelas, RLS | [docs/MODELAGEM_DADOS.md](docs/MODELAGEM_DADOS.md) |
+| Schema, tabelas, RLS (desenho original — nomes divergem do banco real, ver seção acima) | [docs/MODELAGEM_DADOS.md](docs/MODELAGEM_DADOS.md) |
+| Schema **como está de fato no banco** | `supabase/migrations/*.sql` (7 arquivos, 16/09/2026) |
 | Endpoints e campos do TCE | [docs/API_TCE.md](docs/API_TCE.md) |
 | LGPD, OAB, política de coleta | [docs/CONFORMIDADE.md](docs/CONFORMIDADE.md) |
 | Console `/interno`, suporte | [docs/CONSOLE_INTERNO.md](docs/CONSOLE_INTERNO.md) |
@@ -202,7 +242,7 @@ O próprio bundle do Contexto cita essa resolução (junto com LGPD e Lei de Ace
 | Fase | Duração | Entrega | Status |
 | :--- | :--- | :--- | :--- |
 | 0 | 1 sem | Spike técnico, go/no-go | ✅ **GO** (16/09/2026) |
-| 1 | 2 sem | Auth, schema, RLS | ⬜ próxima |
+| 1 | 2 sem | Auth, schema, RLS | 🔶 em andamento — schema/RLS/seed feitos; falta o projeto Next.js e Auth |
 | 2 | 3 sem | Ingestão + console interno | ⬜ |
 | 3 | 2 sem | Detecção + notificação | ⬜ |
 | 4 | 3 sem | Painel escritório + suporte | ⬜ |
@@ -222,17 +262,28 @@ Projeto: Plataforma TCE (c:\Antigravity\Projetos\ControleProcessoTCE)
 Leia ESTADO_DO_PROJETO.md na raiz inteiro, incluindo as seções
 "Achados da Fase 0" (comportamentos reais da API, medidos — qtd
 ignorado, flags de privacidade que não são booleanas, hosts das
-tabelas auxiliares) e "Correções da revisão técnica" (7 problemas
+tabelas auxiliares), "Correções da revisão técnica" (7 problemas
 de segurança já corrigidos: RLS do gestor, autenticação, fila de
-notificação, privacidade, integridade entre tenants). Não reabra
+notificação, privacidade, integridade entre tenants) e "Decisão
+arquitetural: banco compartilhado multi-sistema" (o schema real no
+banco diverge de MODELAGEM_DADOS.md — usuarios/escritorios viraram
+plataforma.usuarios_sistema/plataforma.organizacoes). Não reabra
 essas decisões nem re-teste a API sem motivo novo.
+
+O código do schema já está aplicado no Supabase (projeto
+Plataforma-Sistemas) e commitado em supabase/migrations/ na branch
+feat/fase-1-fundacao (ainda não mergeada em main — confira
+`git status` e `git log --oneline -5` antes de presumir o que já
+foi enviado ao GitHub). Para saber o schema real, leia os arquivos
+.sql em supabase/migrations/, não MODELAGEM_DADOS.md sozinho.
 
 Depois leia os documentos em docs/ que forem relevantes para a tarefa,
 sempre a versão atual do arquivo (não se guie por PLAN.md, PLAN1.md ou
-qualquer análise solta — a fonte de verdade é docs/ e este arquivo).
+qualquer análise solta — a fonte de verdade é docs/, supabase/migrations/
+e este arquivo).
 
-Tarefa de hoje: [DESCREVA AQUI — ex: "iniciar a Fase 0" ou
-"criar o projeto Next.js e Supabase da Fase 1"]
+Tarefa de hoje: [DESCREVA AQUI — ex: "criar o projeto Next.js da Fase 1"
+ou "atualizar MODELAGEM_DADOS.md para refletir o schema real"]
 ```
 
 Isso evita que a IA refaça análise já feita, reabra decisão já tomada, ou reintroduza um bug de RLS já corrigido.

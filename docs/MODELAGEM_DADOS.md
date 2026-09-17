@@ -2,6 +2,8 @@
 
 PostgreSQL via Supabase. Toda tabela de negócio tem Row Level Security ativa.
 
+> ⚠️ **Este documento descreve o desenho ORIGINAL, anterior à Fase 1.** Em 16/09/2026, a implementação real divergiu deliberadamente: `escritorios` e `usuarios` **não existem** como tabelas próprias do TCE — viraram `plataforma.organizacoes` e `plataforma.usuarios_sistema`, um schema `plataforma` **compartilhado** com outros sistemas hospedados no mesmo projeto Supabase (`Plataforma-Sistemas`). Todo o resto (`processos`, `tramites`, `clientes`, `prazos`, `pecas`, etc.) mora em `tce.*` em vez de `public.*`. Ver [ESTADO_DO_PROJETO.md § Decisão arquitetural](../ESTADO_DO_PROJETO.md) para o mapeamento completo e a razão da mudança. Para o schema real aplicado no banco, ler `supabase/migrations/*.sql`, não este arquivo. Este documento **ainda não foi atualizado** para refletir isso — os princípios de RLS, triggers de integridade e imutabilidade de aprovações abaixo continuam válidos, só os nomes de tabela de identidade mudaram.
+
 ---
 
 ## Decisão central: o que é compartilhado e o que é privado
